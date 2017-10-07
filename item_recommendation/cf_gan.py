@@ -117,7 +117,7 @@ def simple_test(sess, model):
 
     pool.close()
     ret = result / test_user_num
-    ret = list(ret)
+    ret2 = list(ret)
     return ret
 
 
@@ -138,22 +138,42 @@ def generate_for_d(sess, model, filename):
     with open(filename, 'w')as fout:
         fout.write('\n'.join(data))
 
+def init_dev(n=(0,)):
+    from os.path import expanduser
+    import os
+    home = expanduser("~")
+    if isinstance(n, int):
+        n = (n,)
+    devs = ''
+    for n_ in n:
+        devs += str(n_) + ','
+    os.environ["CUDA_VISIBLE_DEVICES"] = devs
+    os.environ['PATH'] = home + '/cuda-8.0/bin:' + os.environ['PATH']
+    os.environ['PATH'] = home + 'anaconda2/bin:' + os.environ['PATH']
+    os.environ['PATH'] = home + '/usr/local/cuda-8.0/bin:' + os.environ['PATH']
+
+    os.environ['LD_LIBRARY_PATH'] = home + '/cuda-8.0/lib64'
+    os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-8.0/lib64'
+    # os.environ['PYTHONWARNINGS'] = "ignore"
+
 
 def main():
     print "load model..."
     param = cPickle.load(open(workdir + "model_dns_ori.pkl"))
+    # param = cPickle.load(open(workdir+"gan_generator.pkl"))
+    param[0].shape,param[1].shape,param[2].shape
     generator = GEN(ITEM_NUM, USER_NUM, EMB_DIM, lamda=0.0 / BATCH_SIZE, param=param, initdelta=INIT_DELTA,
                     learning_rate=0.001)
     discriminator = DIS(ITEM_NUM, USER_NUM, EMB_DIM, lamda=0.1 / BATCH_SIZE, param=None, initdelta=INIT_DELTA,
                         learning_rate=0.001)
-
+    init_dev(n=(3,))
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
     sess.run(tf.global_variables_initializer())
 
-    print "gen ", simple_test(sess, generator)
-    print "dis ", simple_test(sess, discriminator)
+    # print "gen ", simple_test(sess, generator)
+    # print "dis ", simple_test(sess, discriminator)
 
     dis_log = open(workdir + 'dis_log.txt', 'w')
     gen_log = open(workdir + 'gen_log.txt', 'w')
@@ -162,9 +182,11 @@ def main():
     best = 0.
     for epoch in range(15):
         if epoch >= 0:
-            for d_epoch in range(100):
+            for d_epoch in range(6):
                 if d_epoch % 5 == 0:
                     generate_for_d(sess, generator, DIS_TRAIN_FILE)
+                    import linecache
+                    linecache.clearcache()
                     train_size = ut.file_len(DIS_TRAIN_FILE)
                 index = 1
                 while True:
@@ -187,7 +209,7 @@ def main():
                     sample_lambda = 0.2
                     pos = user_pos_train[u]
 
-                    rating = sess.run(generator.all_logits, {generator.u: u})
+                    rating = sess.run(generator.all_logits, {generator.u: [u]})
                     exp_rating = np.exp(rating)
                     prob = exp_rating / np.sum(exp_rating)  # prob is generator distribution p_\theta
 

@@ -29,9 +29,9 @@ class GEN():
 
             self.g_params = [self.user_embeddings, self.item_embeddings, self.item_bias]
 
-        self.u = tf.placeholder(tf.int32)
-        self.i = tf.placeholder(tf.int32)
-        self.reward = tf.placeholder(tf.float32)
+        self.u = tf.placeholder(tf.int32,shape=(None,))
+        self.i = tf.placeholder(tf.int32,shape=(None,))
+        self.reward = tf.placeholder(tf.float32,shape=(None,))
 
         self.u_embedding = tf.nn.embedding_lookup(self.user_embeddings, self.u)
         self.i_embedding = tf.nn.embedding_lookup(self.item_embeddings, self.i)
